@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import os
+import sys
+from components.apa.help_manual import HelpManual
+from components.apa.core_config import AppOrientation, SdkVersion, CoreConfig
+
+if __name__ != '__main__':
+    sys.exit("Please run the script from its own source.")
+
+APA_ROOT_DIR = '/'.join(os.path.abspath(__file__).split('/')[:-1])  # Root Directory of APA
+ARGS = sys.argv[1:]
+
+if len(ARGS) == 0:
+    sys.exit("No arguments specified see --help")
+
+if ARGS[0] == '--help':
+    sys.exit(HelpManual())
+
+
+def pull_new_changes_from_git(project_root_dir):
+    os.system(f'cd "{project_root_dir}" && git pull origin main')
+
+
+def get_until_input(msg):
+    while True:
+        inp = input(msg)
+        msg = ""
+        if inp != "":
+            return inp
+
+
+if ARGS[0] == 'init':
+    if len(os.listdir()) == 0:  # if Directory is Empty
+        core_config = CoreConfig(SdkVersion().minimum_version, AppOrientation().rather_not_say)
+
+        # GET ROOT PROJECT NAME
+        core_config.root_project_name = os.getcwd().split('/')[-1]
+        confirm = input(f'Use ({core_config.root_project_name}) as root project name? [Y/n]: ').lower()
+        if confirm in [' ', 'y']:
+            core_config.root_project_name = get_until_input("root project name: ")
+            while ' ' in core_config.root_project_name:
+                core_config.root_project_name = get_until_input("Space isn't allowed, Enter valid root project name: ")
+
+        # GET APPLICATION NAME
+        print("\nEnter application name, This name will be displayed in device launcher.")
+        core_config.app_name = get_until_input("App Name: ")
+
+        # GET APPLICATION PACKAGE NAME
+        print("\nEnter application package name: Example: com.electrodragon.fire")
+        core_config.package_name = get_until_input("package name: ")
+        if '.' not in core_config.package_name or len(core_config.package_name.split('.')) != 3:
+            core_config.package_name = get_until_input("Invalid package name, Please enter valid package name: ")
+
+        # GET APPLICATION NO ACTION BAR THEME USAGE
+        core_config.theme_no_action_bar = input("Use NoActionBar Theme? [Y/n]: ").lower() in ['y', ' ']
+
+        # SHOW SDK VERSIONS
+        for sdk_version in SdkVersion().sdk_versions:
+            print('{}. {}'.format(sdk_version['api_version'], sdk_version['name']))
+
+        # GET APPLICATION MIN SDK VERSION
+        core_config.min_sdk_version = get_until_input("\nMin SdK Version: ")
+        while True:
+            try:
+                core_config.min_sdk_version = int(core_config.min_sdk_version)
+                min_sdk_version = SdkVersion().minimum_version
+                max_sdk_version = SdkVersion().maximum_version
+                if core_config.min_sdk_version not in range(min_sdk_version, max_sdk_version + 1):
+                    raise ValueError
+                break
+            except ValueError:
+                core_config.min_sdk_version = get_until_input("Invalid sdk version, Enter valid min sdk version: ")
+
+        # GET APPLICATION ORIENTATION
+        print("\n:: N->No, l->Landscape, p->Portrait")
+        core_config.app_orientation = input("App orientation? [N/l/p]").lower()
+        if core_config.app_orientation == 'l':
+            core_config.app_orientation = AppOrientation().landscape
+        elif core_config.app_orientation == 'p':
+            core_config.app_orientation = AppOrientation().portrait
+        else:
+            core_config.app_orientation = AppOrientation().rather_not_say
+
+        # GET Hilt Android Application class name
+        core_config.hilt_app_name = get_until_input("hilt android app class name: ")
+        while ' ' in core_config.hilt_app_name:
+            core_config.root_project_name = get_until_input("Space isn't allowed, Enter valid hilt app class name: ")
+
+        print("___________________________")
+        print(core_config.root_project_name)
+        print(core_config.app_name)
+        print(core_config.package_name)
+        print(core_config.hilt_app_name)
+        print(core_config.min_sdk_version)
+        print(core_config.theme_no_action_bar)
+        print(core_config.app_orientation)
+        print("___________________________")
+
+        # os.system(f'bash {APA_ROOT_DIR}/agents/app_assemble_agent.sh \'{APA_ROOT_DIR}\' com/dragon/life')
+    else:
+        print('{} is not empty.'.format(os.getcwd()))
